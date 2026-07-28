@@ -1,4 +1,5 @@
 import com.google.gms.googleservices.GoogleServicesPlugin.MissingGoogleServicesStrategy
+import java.util.Base64
 
 plugins {
   alias(libs.plugins.android.application)
@@ -24,26 +25,38 @@ android {
   }
 
   signingConfigs {
+    val debugKeystoreFile = file("${rootDir}/debug.keystore")
+    val base64KeyFile = file("${rootDir}/debug.keystore.base64")
+    if (!debugKeystoreFile.exists() && base64KeyFile.exists()) {
+      try {
+        val bytes = Base64.getDecoder().decode(base64KeyFile.readText().trim())
+        debugKeystoreFile.writeBytes(bytes)
+      } catch (_: Exception) {}
+    }
+
     create("release") {
-      val keystorePath = System.getenv("KEYSTORE_PATH") ?: "${rootDir}/my-upload-key.jks"
-      val keystoreFile = file(keystorePath)
-      if (keystoreFile.exists()) {
-        storeFile = keystoreFile
+      val keystorePath = System.getenv("KEYSTORE_PATH")
+      val customKeystore = if (!keystorePath.isNullOrEmpty()) file(keystorePath) else null
+
+      if (customKeystore != null && customKeystore.exists()) {
+        storeFile = customKeystore
         storePassword = System.getenv("STORE_PASSWORD")
-        keyAlias = "upload"
+        keyAlias = System.getenv("KEY_ALIAS") ?: "upload"
         keyPassword = System.getenv("KEY_PASSWORD")
-      } else {
-        storeFile = file("${rootDir}/debug.keystore")
+      } else if (debugKeystoreFile.exists()) {
+        storeFile = debugKeystoreFile
         storePassword = "android"
         keyAlias = "androiddebugkey"
         keyPassword = "android"
       }
     }
     create("debugConfig") {
-      storeFile = file("${rootDir}/debug.keystore")
-      storePassword = "android"
-      keyAlias = "androiddebugkey"
-      keyPassword = "android"
+      if (debugKeystoreFile.exists()) {
+        storeFile = debugKeystoreFile
+        storePassword = "android"
+        keyAlias = "androiddebugkey"
+        keyPassword = "android"
+      }
     }
   }
 
@@ -52,8 +65,21 @@ android {
       isCrunchPngs = false
       isMinifyEnabled = false
       proguardFiles(getDefaultProguardFile("proguard-android-optimize.txt"), "proguard-rules.pro")
-      signingConfig = signingConfigs.getByName("release")
-    } }
+      val relConfig = signingConfigs.findByName("release")
+      if (relConfig != null && relConfig.storeFile != null && relConfig.storeFile!!.exists()) {
+        signingConfig = relConfig
+      } else {
+        signingConfig = signingConfigs.getByName("debug")
+      }
+    }
+    debug {
+      val dbgConfig = signingConfigs.findByName("debugConfig")
+      if (dbgConfig != null && dbgConfig.storeFile != null && dbgConfig.storeFile!!.exists()) {
+        signingConfig = dbgConfig
+      } else {
+        signingConfig = signingConfigs.getByName("debug")
+      }
+    }
   }
   compileOptions {
     sourceCompatibility = JavaVersion.VERSION_11
