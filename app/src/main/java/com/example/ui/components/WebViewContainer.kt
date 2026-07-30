@@ -42,6 +42,7 @@ fun WebViewContainer(
                 javaScriptEnabled = true
                 domStorageEnabled = true
                 databaseEnabled = true
+                setGeolocationEnabled(false)
                 useWideViewPort = true
                 loadWithOverviewMode = true
                 setSupportZoom(true)
@@ -141,6 +142,14 @@ fun WebViewContainer(
                     )
                 }
             }
+
+            override fun onGeolocationPermissionsShowPrompt(
+                origin: String?,
+                callback: android.webkit.GeolocationPermissions.Callback?
+            ) {
+                // Location permission off: deny all web location prompts
+                callback?.invoke(origin, false, false)
+            }
         }
     }
 
@@ -168,6 +177,9 @@ fun WebViewContainer(
                     if (webView.canGoForward()) {
                         webView.goForward()
                     }
+                }
+                is UiEvent.EvaluateJavascript -> {
+                    webView.evaluateJavascript(event.script, null)
                 }
                 else -> {}
             }

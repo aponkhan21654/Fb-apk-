@@ -128,39 +128,79 @@ fun TokenSwitcherApp(viewModel: TokenViewModel) {
                 }
             )
 
-            // Random Name Generator Floating Button (Click: First Name, Hold: Surname)
-            Surface(
-                shape = CircleShape,
-                color = Color(0xFF1877F2),
-                contentColor = Color.White,
-                shadowElevation = 6.dp,
+            // Floating Action Buttons Row (Auto Fill + Copy Name)
+            Row(
                 modifier = Modifier
                     .align(Alignment.BottomEnd)
-                    .padding(end = 16.dp, bottom = 28.dp)
-                    .clip(CircleShape)
-                    .combinedClickable(
-                        onClick = { viewModel.copyRandomFirstName(context) },
-                        onLongClick = { viewModel.copyRandomLastName(context) }
-                    )
-                    .testTag("fab_copy_random_name")
+                    .padding(end = 16.dp, bottom = 24.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.CenterVertically
             ) {
-                Row(
-                    verticalAlignment = Alignment.CenterVertically,
-                    horizontalArrangement = Arrangement.spacedBy(6.dp),
-                    modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+                // Auto Fill (Timed)
+                Surface(
+                    shape = CircleShape,
+                    color = Color(0xFF107C41),
+                    contentColor = Color.White,
+                    shadowElevation = 6.dp,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .combinedClickable(
+                            onClick = { viewModel.triggerTimedAutofill() }
+                        )
+                        .testTag("fab_autofill_timed")
                 ) {
-                    Icon(
-                        imageVector = Icons.Default.Face,
-                        contentDescription = "Copy Random Name",
-                        tint = Color.White,
-                        modifier = Modifier.size(20.dp)
-                    )
-                    Text(
-                        text = "Copy Name",
-                        fontWeight = FontWeight.Bold,
-                        fontSize = 13.sp,
-                        color = Color.White
-                    )
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.AutoAwesome,
+                            contentDescription = "Auto Fill Form",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = "Auto Fill",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = Color.White
+                        )
+                    }
+                }
+
+                // Copy Name (Click: First Name, Hold: Surname)
+                Surface(
+                    shape = CircleShape,
+                    color = Color(0xFF1877F2),
+                    contentColor = Color.White,
+                    shadowElevation = 6.dp,
+                    modifier = Modifier
+                        .clip(CircleShape)
+                        .combinedClickable(
+                            onClick = { viewModel.copyRandomFirstName(context) },
+                            onLongClick = { viewModel.copyRandomLastName(context) }
+                        )
+                        .testTag("fab_copy_random_name")
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically,
+                        horizontalArrangement = Arrangement.spacedBy(6.dp),
+                        modifier = Modifier.padding(horizontal = 14.dp, vertical = 10.dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Face,
+                            contentDescription = "Copy Random Name",
+                            tint = Color.White,
+                            modifier = Modifier.size(20.dp)
+                        )
+                        Text(
+                            text = "Copy Name",
+                            fontWeight = FontWeight.Bold,
+                            fontSize = 13.sp,
+                            color = Color.White
+                        )
+                    }
                 }
             }
         }

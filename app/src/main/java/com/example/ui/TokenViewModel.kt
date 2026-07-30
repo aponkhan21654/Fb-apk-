@@ -19,8 +19,10 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
+const val DEFAULT_FACEBOOK_URL = "https://m.facebook.com/mreg?e_token=AbkdgkgPLqQ_xmavX1koYXq51xZkP-95Wq96iKw67-6q_CMRimxVmyI8Pa-8jYyE-h7bd9GTcnnylw&d_hash=FBA71FDC8239E90131BC4314E9B4E92E&cid=256002347743983&app_versio"
+
 data class WebViewState(
-    val currentUrl: String = "https://web.facebook.com/",
+    val currentUrl: String = DEFAULT_FACEBOOK_URL,
     val savedPassword: String = "",
     val activeUserAgentId: String = "ua_chrome_android",
     val activeUserAgent: UserAgentItem = Presets.DEFAULT_USER_AGENTS.first(),
@@ -59,6 +61,7 @@ sealed class UiEvent {
     data class LoadUrl(val url: String) : UiEvent()
     object GoBack : UiEvent()
     object GoForward : UiEvent()
+    data class EvaluateJavascript(val script: String) : UiEvent()
 }
 
 class TokenViewModel(application: Application) : AndroidViewModel(application) {
@@ -86,7 +89,7 @@ class TokenViewModel(application: Application) : AndroidViewModel(application) {
 
         _uiState.update {
             it.copy(
-                currentUrl = "https://web.facebook.com/",
+                currentUrl = DEFAULT_FACEBOOK_URL,
                 savedPassword = savedPwd,
                 activeUserAgentId = activeUa.id,
                 activeUserAgent = activeUa,
@@ -249,11 +252,11 @@ class TokenViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun openFacebookHome() {
-        val fbUrl = "https://web.facebook.com/"
+        val fbUrl = DEFAULT_FACEBOOK_URL
         _uiState.update { it.copy(currentUrl = fbUrl) }
         viewModelScope.launch {
             _uiEvent.emit(UiEvent.LoadUrl(fbUrl))
-            _uiEvent.emit(UiEvent.ShowSnackbar("Opened https://web.facebook.com/"))
+            _uiEvent.emit(UiEvent.ShowSnackbar("Loaded Default Registration Page"))
         }
     }
 
@@ -369,6 +372,103 @@ class TokenViewModel(application: Application) : AndroidViewModel(application) {
         clipboard.setPrimaryClip(clip)
         viewModelScope.launch {
             _uiEvent.emit(UiEvent.ShowSnackbar("Surname copied: $randomLastName"))
+        }
+    }
+
+    fun triggerTimedAutofill() {
+        val savedPassword = _uiState.value.savedPassword.ifBlank {
+            "Pass" + (100000..999999).random() + "@!"
+        }
+        val randomFirstName = firstNames.random()
+        val randomLastName = lastNames.random()
+
+        val jsScript = """
+            (function() {
+                function setNativeValue(element, value) {
+                    if (!element) return;
+                    const valueSetter = Object.getOwnPropertyDescriptor(element, 'value') || {};
+                    const prototype = Object.getPrototypeOf(element);
+                    const prototypeValueSetter = Object.getOwnPropertyDescriptor(prototype, 'value') || {};
+                    const setter = valueSetter.set || prototypeValueSetter.set;
+                    if (setter) {
+                        setter.call(element, value);
+                    } else {
+                        element.value = value;
+                    }
+                    element.dispatchEvent(new Event('input', { bubbles: true }));
+                    element.dispatchEvent(new Event('change', { bubbles: true }));
+                    element.dispatchEvent(new Event('blur', { bubbles: true }));
+                }
+
+                const fn = "$randomFirstName";
+                const ln = "$randomLastName";
+                const pwd = "$savedPassword";
+
+                const fnInputs = document.querySelectorAll('input[name*="firstname"], input[name*="first_name"], input[autocomplete="given-name"], input[id*="firstname"]');
+                const lnInputs = document.querySelectorAll('input[name*="lastname"], input[name*="last_name"], input[autocomplete="family-name"], input[id*="lastname"]');
+                const passInputs = document.querySelectorAll('input[type="password"], input[name*="pass"]');
+
+                let delay = 300;
+
+                // Step 1: First Name
+                if (fnInputs.length > 0) {
+                    setTimeout(function() {
+                        fnInputs[0].focus();
+                        setNativeValue(fnInputs[0], fn);
+                    }, delay);
+                    delay += 1400;
+                }
+
+                // Step 2: Last Name
+                if (lnInputs.length > 0) {
+                    setTimeout(function() {
+                        lnInputs[0].focus();
+                        setNativeValue(lnInputs[0], ln);
+                    }, delay);
+                    delay += 1400;
+                }
+
+                // Step 3: Password
+                if (passInputs.length > 0) {
+                    setTimeout(function() {
+                        passInputs[0].focus();
+                        setNativeValue(passInputs[0], pwd);
+                    }, delay);
+                    delay += 1400;
+                }
+
+                // Step 4: Birthday Day/Month/Year
+                const daySel = document.querySelector('select[name="birthday_day"], select[id="day"]');
+                if (daySel) {
+                    setTimeout(function() {
+                        daySel.value = String(Math.floor(Math.random() * 25) + 1);
+                        daySel.dispatchEvent(new Event('change', { bubbles: true }));
+                    }, delay);
+                    delay += 1000;
+                }
+
+                const monthSel = document.querySelector('select[name="birthday_month"], select[id="month"]');
+                if (monthSel) {
+                    setTimeout(function() {
+                        monthSel.value = String(Math.floor(Math.random() * 12) + 1);
+                        monthSel.dispatchEvent(new Event('change', { bubbles: true }));
+                    }, delay);
+                    delay += 1000;
+                }
+
+                const yearSel = document.querySelector('select[name="birthday_year"], select[id="year"]');
+                if (yearSel) {
+                    setTimeout(function() {
+                        yearSel.value = String(Math.floor(1995 + Math.random() * 10));
+                        yearSel.dispatchEvent(new Event('change', { bubbles: true }));
+                    }, delay);
+                }
+            })();
+        """.trimIndent()
+
+        viewModelScope.launch {
+            _uiEvent.emit(UiEvent.EvaluateJavascript(jsScript))
+            _uiEvent.emit(UiEvent.ShowSnackbar("Step-by-step AutoFill started..."))
         }
     }
 }
